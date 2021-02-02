@@ -2,15 +2,53 @@ package main
 
 import (
 	"bufio"
-	"crypto/tls"
+	"bytes"
+	"context"
+	"encoding/base64"
+	"encoding/json"
 	"os"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/aymerick/douceur/inliner"
 	"github.com/drone/drone-go/template"
 	"github.com/jaytaylor/html2text"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"gopkg.in/gomail.v2"
+
+	"google.golang.org/api/gmail/v1"
+	"google.golang.org/api/option"
 )
+
+func OAuthGmailService(ctx context.Context, credentials, token string) (*gmail.Service, error) {
+	// If modifying these scopes, delete your previously saved token.json.
+	config, err := google.ConfigFromJSON([]byte(credentials), gmail.GmailReadonlyScope)
+	if err != nil {
+		return nil, err
+	}
+
+	tok := &oauth2.Token{}
+	if err = json.Unmarshal([]byte(token), tok); err != nil {
+		return nil, err
+	}
+
+	return gmail.NewService(ctx, option.WithTokenSource(
+		config.TokenSource(ctx, tok)))
+}
+
+func SendEmailOAUTH2(srv *gmail.Service, msg *gomail.Message) (err error) {
+	msgData := new(bytes.Buffer)
+	if _, err = msg.WriteTo(msgData); err != nil {
+		return
+	}
+	var message gmail.Message
+
+	message.Raw = base64.URLEncoding.EncodeToString(msgData.Bytes())
+
+	// Send the message
+	_, err = srv.Users.Messages.Send("me", &message).Do()
+	return
+}
 
 type (
 	Repo struct {
@@ -82,11 +120,6 @@ type (
 
 	Config struct {
 		From           string
-		Host           string
-		Port           int
-		Username       string
-		Password       string
-		SkipVerify     bool
 		Recipients     []string
 		RecipientsFile string
 		RecipientsOnly bool
@@ -94,7 +127,8 @@ type (
 		Body           string
 		Attachment     string
 		Attachments    []string
-		ClientHostname string
+		Credentials    string
+		Token          string
 	}
 
 	Plugin struct {
@@ -114,8 +148,7 @@ type (
 
 // Exec will send emails over SMTP
 func (p Plugin) Exec() error {
-	var dialer *gomail.Dialer
-
+	gmService, err := OAuthGmailService(context.Background(), p.Config.Credentials, p.Config.Token)
 	if !p.Config.RecipientsOnly {
 		exists := false
 		for _, recipient := range p.Config.Recipients {
@@ -139,22 +172,6 @@ func (p Plugin) Exec() error {
 		} else {
 			log.Errorf("Could not open RecipientsFile %s: %v", p.Config.RecipientsFile, err)
 		}
-	}
-
-	if p.Config.Username == "" && p.Config.Password == "" {
-		dialer = &gomail.Dialer{Host: p.Config.Host, Port: p.Config.Port}
-	} else {
-		dialer = gomail.NewDialer(p.Config.Host, p.Config.Port, p.Config.Username, p.Config.Password)
-	}
-	if p.Config.SkipVerify {
-		dialer.TLSConfig = &tls.Config{InsecureSkipVerify: true}
-	}
-	dialer.LocalName = p.Config.ClientHostname
-
-	closer, err := dialer.Dial()
-	if err != nil {
-		log.Errorf("Error while dialing SMTP server: %v", err)
-		return err
 	}
 
 	type Context struct {
@@ -226,7 +243,7 @@ func (p Plugin) Exec() error {
 			attach(message, attachment)
 		}
 
-		if err := gomail.Send(closer, message); err != nil {
+		if err := SendEmailOAUTH2(gmService, message); err != nil {
 			log.Errorf("Could not send email to %q: %v", recipient, err)
 			return err
 		}

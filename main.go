@@ -31,32 +31,6 @@ func main() {
 			EnvVar: "PLUGIN_FROM",
 		},
 		cli.StringFlag{
-			Name:   "host",
-			Usage:  "smtp host",
-			EnvVar: "EMAIL_HOST,PLUGIN_HOST",
-		},
-		cli.IntFlag{
-			Name:   "port",
-			Value:  DefaultPort,
-			Usage:  "smtp port",
-			EnvVar: "EMAIL_PORT,PLUGIN_PORT",
-		},
-		cli.StringFlag{
-			Name:   "username",
-			Usage:  "smtp server username",
-			EnvVar: "EMAIL_USERNAME,PLUGIN_USERNAME",
-		},
-		cli.StringFlag{
-			Name:   "password",
-			Usage:  "smtp server password",
-			EnvVar: "EMAIL_PASSWORD,PLUGIN_PASSWORD",
-		},
-		cli.BoolFlag{
-			Name:   "skip.verify",
-			Usage:  "skip tls verify",
-			EnvVar: "PLUGIN_SKIP_VERIFY",
-		},
-		cli.StringFlag{
 			Name:   "recipients.file",
 			Usage:  "file to read recipients from",
 			EnvVar: "EMAIL_RECIPIENTS_FILE,PLUGIN_RECIPIENTS_FILE",
@@ -93,11 +67,16 @@ func main() {
 			Usage:  "attachment filename(s)",
 			EnvVar: "PLUGIN_ATTACHMENTS",
 		},
+
 		cli.StringFlag{
-			Name:   "clienthostname",
-			Value:  DefaultClientHostname,
-			Usage:  "smtp client hostname",
-			EnvVar: "EMAIL_CLIENTHOSTNAME,PLUGIN_CLIENTHOSTNAME",
+			Name:   "gmail.credentials",
+			Usage:  "gmail credentials",
+			EnvVar: "GMAIL_CREDENTIALS",
+		},
+		cli.StringFlag{
+			Name:   "gmail.token",
+			Usage:  "gmail token",
+			EnvVar: "GMAIL_TOKEN",
 		},
 
 		// Drone environment
@@ -385,11 +364,6 @@ func run(c *cli.Context) error {
 		DeployTo:    c.String("deployTo"),
 		Config: Config{
 			From:           c.String("from"),
-			Host:           c.String("host"),
-			Port:           c.Int("port"),
-			Username:       c.String("username"),
-			Password:       c.String("password"),
-			SkipVerify:     c.Bool("skip.verify"),
 			Recipients:     c.StringSlice("recipients"),
 			RecipientsFile: c.String("recipients.file"),
 			RecipientsOnly: c.Bool("recipients.only"),
@@ -397,7 +371,8 @@ func run(c *cli.Context) error {
 			Body:           c.String("template.body"),
 			Attachment:     c.String("attachment"),
 			Attachments:    c.StringSlice("attachments"),
-			ClientHostname: c.String("clienthostname"),
+			Credentials:    c.String("gmail.credentials"),
+			Token:          c.String("gmail.token"),
 		},
 	}
 
