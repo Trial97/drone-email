@@ -149,6 +149,9 @@ type (
 // Exec will send emails over SMTP
 func (p Plugin) Exec() error {
 	gmService, err := OAuthGmailService(context.Background(), p.Config.Credentials, p.Config.Token)
+	if err != nil {
+		log.Fatalf("Could not init gmail service: %v", err)
+	}
 	if !p.Config.RecipientsOnly {
 		exists := false
 		for _, recipient := range p.Config.Recipients {

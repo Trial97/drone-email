@@ -71,12 +71,12 @@ func main() {
 		cli.StringFlag{
 			Name:   "gmail.credentials",
 			Usage:  "gmail credentials",
-			EnvVar: "GMAIL_CREDENTIALS",
+			EnvVar: "PLUGIN_CREDENTIALS",
 		},
 		cli.StringFlag{
 			Name:   "gmail.token",
 			Usage:  "gmail token",
-			EnvVar: "GMAIL_TOKEN",
+			EnvVar: "PLUGIN_TOKEN",
 		},
 
 		// Drone environment
